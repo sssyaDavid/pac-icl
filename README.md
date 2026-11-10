@@ -1,116 +1,38 @@
-# PAC-Private ICL Aggregation
+# Privacy-Preserving In-Context Learning for Large Language Models
 
-Run DP-ICL experiments with a locally deployed LLaMA, comparing DP (RNM + Gaussian) with PAC Privacy adaptive aggregation.
+ 
+This repository hosts the code and resources for replicating the paper "Privacy-Preserving In-Context Learning for Large Language Models" on ICLR 2024. [[Paper]](https://openreview.net/pdf?id=x4OPJ7lHVU)
 
-## Directory layout
 
+### Abstract 
+In-context learning (ICL) is an important capability of Large Language Models (LLMs), enabling these models to dynamically adapt based on specific, in-context exemplars, thereby improving accuracy and relevance. However, LLM's responses may leak the sensitive private information contained in in-context exemplars. To address this challenge, we propose Differentially Private In-context Learning (DP-ICL), a general paradigm for privatizing ICL tasks. The key idea for DP-ICL paradigm is generating differentially private responses through a noisy consensus among an ensemble of LLM's responses based on disjoint exemplar sets. Based on the general paradigm of DP-ICL, we instantiate several techniques showing how to privatize ICL for text classification and language generation. We experiment on four text classification benchmarks and two language generation tasks, and our empirical findings suggest that our DP-ICL achieves a strong utility-privacy tradeoff.
+
+
+
+### Please check the Google Colab 
+
+Important Note: Due to OpenAI's deprecation of the model previously utilized in our experiments, direct replication of some results may no longer be feasible. Nonetheless, we have archived the individual predictions, which are accessible for experiments with varying privacy parameters.
+
+
+[[Google Drive Link]](https://drive.google.com/drive/folders/1CgsBzByFSdpbOi8Mp9u4W4PNKgiE9PMk?usp=sharing)
+
+
+
+
+## Cite our paper
 ```
-pac-dp-icl/
-├── configs/
-│   └── experiment.yaml      # All hyperparameters (edit the config here)
-├── src/
-│   ├── data/datasets.py     # Dataset loading + teacher splits
-│   ├── teachers/
-│   │   └── llm_teacher.py   # LLaMA ICL inference (HF and Ollama backends)
-│   ├── aggregation/
-│   │   ├── dp.py            # DP baseline: RNM + Gaussian
-│   │   └── pac.py           # PAC: Monte Carlo adaptive noise
-│   ├── privacy/
-│   │   └── mi_estimator.py  # Mutual information Monte Carlo estimator
-│   └── evaluation/
-│       └── metrics.py       # Accuracy and noise statistics
-└── experiments/
-    ├── quick_test.py        # Fast check without an LLM (run this first)
-    └── run_experiment.py    # Full experiment
-```
-
-## Quick start
-
-### 1. Install dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-### 2. Check the PAC core logic (no LLM, about 2 minutes)
-
-```bash
-python experiments/quick_test.py
+@inproceedings{
+wu2024privacypreserving,
+title={Privacy-Preserving In-Context Learning for Large Language Models},
+author={Tong Wu and Ashwinee Panda and Jiachen T. Wang and Prateek Mittal},
+booktitle={The Twelfth International Conference on Learning Representations},
+year={2024},
+url={https://openreview.net/forum?id=x4OPJ7lHVU}
+}
 ```
 
-Expected output:
-- Noise used by PAC on decisive votes is smaller than the fixed DP noise
-- Vote margin is negatively correlated with σ* (larger margin → smaller noise)
+## Question
+Please add an issue if you have questions about the code.
 
-### 3. Configure the LLM backend
+Please email Tong Wu (tongwu@princeton.edu) for any questions related to the paper.
 
-**Option A: HuggingFace Transformers (requires downloading the model)**
-
-```yaml
-# configs/experiment.yaml
-model:
-  name: "meta-llama/Llama-3.2-1B-Instruct"
-  device: "cpu"   # or "cuda" / "mps"
-```
-
-Request Meta LLaMA access and log in to Hugging Face first:
-```bash
-huggingface-cli login
-```
-
-**Option B: Ollama (lower VRAM use, recommended for local tests)**
-
-```bash
-# Install Ollama first: https://ollama.ai
-ollama pull llama3.2:1b
-```
-
-```yaml
-# configs/experiment.yaml
-model:
-  name: "ollama:llama3.2:1b"
-```
-
-### 4. Run the full experiment
-
-```bash
-python experiments/run_experiment.py --config configs/experiment.yaml
-```
-
-Results are saved under `results/<timestamp>/` and include:
-- `votes.npy`: raw vote histograms
-- `dp_results.json`: DP aggregation results
-- `pac_results.json`: PAC aggregation results
-- `comparison.png`: three comparison plots
-
-## Core algorithms
-
-### DP aggregation (baseline)
-
-```
-σ = √(2 ln(1.25/δ)) / ε    [fixed, worst case]
-ṽᵢ = vᵢ + N(0, σ²)
-Output: argmax ṽ
-Privacy guarantee: (ε, δ)-DP
-```
-
-### PAC aggregation (proposed method)
-
-```
-Step 1: Estimate Î = (1/T) Σ ln[ P(M|v) / P(M|v') ]   [Monte Carlo]
-Step 2: σ* = min{σ : Î ≤ η}                             [binary search]
-Step 3: ṽᵢ = vᵢ + N(0, σ*²),  output: argmax ṽ
-Privacy guarantee: (η, δ)-PAC Privacy
-```
-
-**Key advantage**: when the vote margin is large (for example [8, 2]), σ* << DP σ and accuracy is higher.
-
-## Configuration
-
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `teachers.num_teachers` | Number of teachers | 10 |
-| `teachers.shots_per_teacher` | ICL examples per teacher | 4 |
-| `dp.epsilon` | DP privacy budget ε | 1.0 |
-| `pac.eta` | PAC target mutual-information upper bound (nats) | 0.5 |
-| `pac.mc_samples` | Number of Monte Carlo samples | 500 |
