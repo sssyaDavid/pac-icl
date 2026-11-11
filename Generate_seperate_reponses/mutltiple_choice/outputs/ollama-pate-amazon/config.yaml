@@ -1,0 +1,21 @@
+task: amazon
+processor_kwargs:
+  mode: labeled-gpt3
+shots:
+- 4
+seed: 42
+runs: 1
+strategy: pate
+basedir: ./outputs
+model_kwargs:
+  calibrate: false
+model: ollama
+model_name: llama3.1:8b
+output_dir: ./outputs/ollama-pate-amazon
+ensemble: 10
+delta: 1.0e-05
+epsilons:
+- 1
+- 3
+- 8
+privacy: dp
