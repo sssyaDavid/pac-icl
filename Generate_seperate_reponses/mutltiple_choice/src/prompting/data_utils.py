@@ -317,7 +317,7 @@ class SST2Processor(BaseProcessor):
 
 class AGNewsProcessor(BaseProcessor):
     def __init__(self, seed: int, mode: str):
-        self.dataset_name = "ag_news"
+        self.dataset_name = "fancyzhx/ag_news"
         self.val_split = None
         self.prompt_start = (
             "Classify the news based on whether their"
@@ -341,7 +341,10 @@ class AGNewsProcessor(BaseProcessor):
 
 class TRECProcessor(BaseProcessor):
     def __init__(self, seed: int, mode: str):
-        self.dataset_name = "trec"
+        # CogComp/trec still ships a loading script, which current `datasets` refuses to run.
+        # jxm/trec is the same questions with columns sentence/label.
+        # Label ids are DESC, ENTY, ABBR, HUM, LOC, NUM.
+        self.dataset_name = "jxm/trec"
         self.val_split = None
         self.prompt_start = (
             "Classify the questions based on whether their answ"
@@ -357,26 +360,26 @@ class TRECProcessor(BaseProcessor):
             "Entity",
             "Abbreviation",
             "Person",
-            "Number",
             "Location",
+            "Number",
         ]
         self.model_kwargs = {"labels": self.labels}
         self.generate_datasets(seed, mode)
 
     def get_label_idx(self, example: Dict):
-        return example["label-coarse"]
+        return example["label"]
 
     def convert_example_to_template_fields(self, example):
-        label_text = self.labels[example["label-coarse"]]
-        return {"text": example["text"], "label_text": label_text}
+        label_text = self.labels[example["label"]]
+        return {"text": example["sentence"], "label_text": label_text}
 
     def parse_probe_example(self, s: str):
-        return {"text": s, "label-coarse": 0}
+        return {"sentence": s, "label": 0}
 
 
 class AmazonProcessor(BaseProcessor):
     def __init__(self, seed: int, mode: str):
-        self.dataset_name = "amazon_polarity"
+        self.dataset_name = "fancyzhx/amazon_polarity"
         self.val_split = None
         self.train_template = (
             "Title: {title}\n" "Review: {review}\n" "Sentiment: {label_text}\n\n"

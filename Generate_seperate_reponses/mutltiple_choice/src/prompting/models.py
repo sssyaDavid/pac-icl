@@ -332,9 +332,10 @@ class OllamaWrapper:
         payload = {
             "model": self.model_name,
             "prompt": str(prompt),
+            "system": f'Answer with exactly one word from: {", ".join(self.labels)}. No explanation.',
             "stream": False,
             "options": {
-                "num_predict": 10,
+                "num_predict": 50,
                 "temperature": 0,
                 "stop": ["\n", ".", ","],
             },
@@ -355,7 +356,7 @@ class OllamaWrapper:
         if matched is None:
             # Fallback: pick randomly (keeps unbiased under noise)
             matched = self.labels[0]
-            logger.debug(f"Label not found in response: '{raw}', defaulting to {matched}")
+            logger.warning(f"Label not found in response: '{raw}', defaulting to {matched}")
 
         n = len(self.labels)
         probs = torch.zeros(n)

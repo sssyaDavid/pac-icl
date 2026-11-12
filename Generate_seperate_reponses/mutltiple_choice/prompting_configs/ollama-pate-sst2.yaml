@@ -24,4 +24,5 @@ privacy: pac
 rhos:
 - 0.5
 - 4.5
-- 32.0
+- 32.0 
+lambda_adapt: 1.0

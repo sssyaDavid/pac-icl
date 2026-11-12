@@ -57,6 +57,59 @@ class PATEStrategy(BaseStrategy):
         import math
         return 1.0 / math.sqrt(rho)
 
+    @staticmethod
+    def _adaptive_pac_predict(votes, labels, rho, lambda_adapt, n_classes):
+        """
+        PAC-private prediction with confidence-adaptive Gaussian noise.
+
+        Core idea: PAC privacy requires E[1/sigma^2] <= rho (expectation over
+        test queries). This allows per-sample sigma as long as the average
+        budget is met. High-confidence queries get less noise; low-confidence
+        queries get more noise.
+
+        sigma(j) = 1 / sqrt(rho * w(j))
+        w(j) = 1 + lambda * (margin(j) - mean_margin) / std_margin
+        After clipping and renormalization: E[w] = 1
+        Therefore: E[1/sigma^2] = E[rho * w] = rho * E[w] = rho  (budget met)
+
+        Parameters
+        ----------
+        votes        : (n_test, n_classes) int array of teacher vote counts
+        labels       : list of class label strings
+        rho          : PAC privacy budget (mutual-information bound)
+        lambda_adapt : adaptation strength (0 = fixed noise, 1 = standard,
+                       2 = aggressive; default 1.0)
+        n_classes    : number of output classes
+        """
+        votes = np.array(votes)
+        n_test = len(votes)
+
+        # Step 1: per-sample confidence margin
+        # margin(j) = (top_vote - second_vote) / n_teachers  in [0, 1]
+        sorted_v  = np.sort(votes, axis=1)[:, ::-1]
+        n_teachers = votes.sum(axis=1).mean()
+        margins   = (sorted_v[:, 0] - sorted_v[:, 1]) / (n_teachers + 1e-8)
+
+        # Step 2: normalized weights  E[w] = 1
+        # High margin -> w > 1 -> sigma small -> less noise -> better accuracy
+        # Low  margin -> w < 1 -> sigma large -> more noise
+        mean_m = margins.mean()
+        std_m  = margins.std() + 1e-8
+        w = 1.0 + lambda_adapt * (margins - mean_m) / std_m
+        w = np.clip(w, 0.05, None)   # prevent sigma from blowing up
+        w = w / w.mean()             # re-normalize: guarantees E[w] = 1 exactly
+
+        # Step 3: adaptive sigma  =>  E[1/sigma^2] = rho
+        sigmas = 1.0 / np.sqrt(rho * w)
+
+        # Step 4: add noise and argmax
+        preds = []
+        for j in range(n_test):
+            noisy = votes[j].astype(float) + np.random.normal(0, sigmas[j], n_classes)
+            preds.append(labels[int(np.argmax(noisy))])
+
+        return preds
+
     def run_strategy(self, proc: BaseProcessor, model: GPT2Wrapper, shot: int):
         # Determine privacy mode from config: "dp" (default) or "pac"
         privacy_mode = self.conf.get("privacy", "dp").lower()
@@ -118,16 +171,18 @@ class PATEStrategy(BaseStrategy):
         results = {"non_private": acc_nonprivate}
 
         if privacy_mode == "pac":
-            # PAC aggregation: Gaussian RNM with sigma = 1/sqrt(rho)
-            # rho is the mutual-information privacy budget
+            # PAC aggregation with confidence-adaptive Gaussian noise.
+            # sigma(j) = 1/sqrt(rho * w(j)), E[w] = 1 => E[1/sigma^2] = rho.
+            # lambda_adapt=0 degenerates to fixed noise (original PAC).
+            lambda_adapt = self.conf.get("lambda_adapt", 1.0)
+
             for rho in self.conf.get("rhos", [0.5, 4.5, 32.0]):
-                sigma = self._pac_sigma(rho)
-                preds = []
-                for j in range(n_test):
-                    noisy = votes[j].astype(float) + np.random.normal(0, sigma, n_classes)
-                    preds.append(labels[int(np.argmax(noisy))])
+                preds = PATEStrategy._adaptive_pac_predict(
+                    votes, labels, rho, lambda_adapt, n_classes
+                )
                 acc = sum(p == g for p, g in zip(preds, gt_labels)) / n_test
-                print(f"{'PAC (rho='+str(rho)+')':<25}  {acc:>9.1%}")
+                tag = f"PAC-Adaptive (rho={rho})"
+                print(f"{tag:<25}  {acc:>9.1%}")
                 results[f"rho_{rho}"] = acc
 
         else:
