@@ -1,0 +1,29 @@
+[
+  {
+    "eps": 1,
+    "lambda_adapt": 1.0,
+    "rouge1": 0.2422,
+    "rouge2": 0.0821,
+    "rougeL": 0.1779,
+    "avg_keywords": 8.05,
+    "avg_agreement": 0.919
+  },
+  {
+    "eps": 3,
+    "lambda_adapt": 1.0,
+    "rouge1": 0.2232,
+    "rouge2": 0.0742,
+    "rougeL": 0.1636,
+    "avg_keywords": 7.28,
+    "avg_agreement": 0.911
+  },
+  {
+    "eps": 8,
+    "lambda_adapt": 1.0,
+    "rouge1": 0.241,
+    "rouge2": 0.079,
+    "rougeL": 0.1744,
+    "avg_keywords": 7.19,
+    "avg_agreement": 0.915
+  }
+]
