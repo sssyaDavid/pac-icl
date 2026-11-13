@@ -14,7 +14,7 @@ ensemble: 10
 runs: 1
 privacy: pac
 rhos:
-- 0.5
-- 4.5
-- 32.0
+- 0.040
+- 0.315
+- 1.719
 lambda_adapt: 1.0

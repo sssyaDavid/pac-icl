@@ -1,0 +1,21 @@
+task: agnews
+processor_kwargs:
+  mode: labeled-gpt3
+shots:
+- 4
+seed: 42
+runs: 1
+strategy: pate
+basedir: ./outputs
+model_kwargs:
+  calibrate: false
+model: ollama
+model_name: llama3.1:8b
+output_dir: ./outputs/ollama-pate-agnews-pac
+ensemble: 10
+privacy: pac
+rhos:
+- 0.04
+- 0.315
+- 1.719
+lambda_adapt: 1.0
