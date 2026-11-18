@@ -1,0 +1,32 @@
+[
+  {
+    "eps": 1.0,
+    "lambda_adapt": 1.0,
+    "delta": 1e-05,
+    "confidence_mode": "pairwise_entropy",
+    "rouge1": 0.3644,
+    "rouge2": 0.1261,
+    "rougeL": 0.2771,
+    "avg_agreement": 0.0031
+  },
+  {
+    "eps": 3.0,
+    "lambda_adapt": 1.0,
+    "delta": 1e-05,
+    "confidence_mode": "pairwise_entropy",
+    "rouge1": 0.3803,
+    "rouge2": 0.127,
+    "rougeL": 0.286,
+    "avg_agreement": 0.0031
+  },
+  {
+    "eps": 8.0,
+    "lambda_adapt": 1.0,
+    "delta": 1e-05,
+    "confidence_mode": "pairwise_entropy",
+    "rouge1": 0.3577,
+    "rouge2": 0.1193,
+    "rougeL": 0.2678,
+    "avg_agreement": 0.0031
+  }
+]

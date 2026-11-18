@@ -1,8 +1,9 @@
 """
 PAC-ESA on SAMSum using Ollama (LLaMA 3.1:8b).
 Usage:
-    python run_samsum_pac_esa.py                      # PAC-ESA lambda=1
-    python run_samsum_pac_esa.py --lambda_adapt 0.0   # DP-ESA baseline
+    python run_samsum_pac_esa.py                                      # PAC-ESA lambda=1, cosine_centroid
+    python run_samsum_pac_esa.py --lambda_adapt 0.0                   # DP-ESA baseline
+    python run_samsum_pac_esa.py --confidence_mode pairwise_entropy   # entropy confidence
     python run_samsum_pac_esa.py --eps_list 3 8
 """
 import argparse, json, os, random
@@ -22,6 +23,8 @@ parser.add_argument("--ds_size", type=int, default=100)
 parser.add_argument("--ice_num", type=int, default=4)
 parser.add_argument("--n_candidates", type=int, default=10)
 parser.add_argument("--candidate_temp", type=float, default=0.7)
+parser.add_argument("--confidence_mode", type=str, default="cosine_centroid",
+                    choices=["cosine_centroid", "pairwise_entropy"])
 parser.add_argument("--output_dir", type=str, default=None)
 args_cli = parser.parse_args()
 
@@ -35,13 +38,14 @@ DELTA = args_cli.delta
 LAMBDA_ADAPT = args_cli.lambda_adapt
 N_CANDIDATES = args_cli.n_candidates
 CANDIDATE_TEMP = args_cli.candidate_temp
+CONFIDENCE_MODE = args_cli.confidence_mode
 
 if args_cli.output_dir:
     OUTPUT_DIR = args_cli.output_dir
 elif LAMBDA_ADAPT == 0.0:
     OUTPUT_DIR = "./outputs/dp_esa_samsum"
 else:
-    OUTPUT_DIR = f"./outputs/pac_esa_samsum_lambda{LAMBDA_ADAPT}"
+    OUTPUT_DIR = f"./outputs/pac_esa_samsum_{CONFIDENCE_MODE}_lambda{LAMBDA_ADAPT}"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 
@@ -96,7 +100,8 @@ def run_experiment(eps, train_data, test_data, rouge_metric):
 
         # Step 2: PAC-ESA -> noisy mean embedding
         noisy_mean, confidence = pac_esa_aggregate(
-            teacher_outputs, eps=eps, delta=DELTA, lambda_adapt=LAMBDA_ADAPT
+            teacher_outputs, eps=eps, delta=DELTA, lambda_adapt=LAMBDA_ADAPT,
+            confidence_mode=CONFIDENCE_MODE
         )
         agreement_scores.append(confidence)
 
@@ -119,6 +124,7 @@ def run_experiment(eps, train_data, test_data, rouge_metric):
     scores = rouge_metric.compute(predictions=all_preds, references=all_refs)
     result = {
         "eps": eps, "lambda_adapt": LAMBDA_ADAPT, "delta": DELTA,
+        "confidence_mode": CONFIDENCE_MODE,
         "rouge1": round(scores["rouge1"], 4),
         "rouge2": round(scores["rouge2"], 4),
         "rougeL": round(scores["rougeL"], 4),
@@ -128,7 +134,8 @@ def run_experiment(eps, train_data, test_data, rouge_metric):
 
 
 def main():
-    print(f"Config: lambda_adapt={LAMBDA_ADAPT}, eps_list={EPS_LIST}, n_candidates={N_CANDIDATES}")
+    print(f"Config: lambda_adapt={LAMBDA_ADAPT}, confidence_mode={CONFIDENCE_MODE}, "
+          f"eps_list={EPS_LIST}, n_candidates={N_CANDIDATES}")
     dataset = load_dataset("knkarthick/samsum", cache_dir="./data")
     train_data = list(dataset["train"])
     test_data = list(dataset["test"])[:DS_SIZE]
@@ -137,7 +144,8 @@ def main():
     all_results = []
     for eps in EPS_LIST:
         result, preds = run_experiment(eps, train_data, test_data, rouge_metric)
-        print(f"\n[eps={eps}] R1={result['rouge1']} R2={result['rouge2']} RL={result['rougeL']} agreement={result['avg_agreement']}")
+        print(f"\n[eps={eps}] R1={result['rouge1']} R2={result['rouge2']} "
+              f"RL={result['rougeL']} agreement={result['avg_agreement']}")
         all_results.append(result)
         with open(os.path.join(OUTPUT_DIR, f"preds_eps{eps}.json"), "w") as f:
             json.dump(preds, f, indent=2)
