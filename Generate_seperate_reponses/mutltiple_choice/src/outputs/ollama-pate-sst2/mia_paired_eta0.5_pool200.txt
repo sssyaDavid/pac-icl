@@ -1,0 +1,4 @@
+eta=0.5
+K=10, shot=4, pool=200, n_targets=50, n_mia_queries=100
+attack_accuracy=0.460000
+attack_advantage=-0.080000
